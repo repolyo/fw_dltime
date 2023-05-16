@@ -1,0 +1,29 @@
+name: fw_dltime
+description: Get approximate download time given a FW revision.
+version: 0.0.1-dev.6
+homepage: https://github.com/repolyo/fw_dltime.git
+
+environment:
+  sdk: '>=3.1.0-89.0.dev <4.0.0'
+  flutter: ">=3.3.0"
+
+dependencies:
+  cloud_firestore: ^4.7.0
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.0.2
+  speed_checker_plugin: ^1.0.14
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.lexmark.fw_dltime
+        pluginClass: FwDltimePlugin
+      ios:
+        pluginClass: FwDltimePlugin
