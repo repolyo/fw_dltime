@@ -77,11 +77,11 @@ class FwDltime {
             debugPrint('percent: ${result.percent}');
             debugPrint('currentSpeed: ${currentBps.toStringAsFixed(2)} Mbps');
             debugPrint('uploadSpeed: ${uploadBps.toStringAsFixed(2)} Mbps');
+            debugPrint(
+                'download speed: ${downloadBps.toStringAsFixed(2)} Mbps');
 
             debugPrint('==================> Model Name: $fwRevision');
             debugPrint('flash file size: $fwSizeMbs MB');
-            debugPrint(
-                'download speed: ${downloadBps.toStringAsFixed(2)} Mbps');
           }
           callback.call(
               downloadBps, flashFileBytes, flashFileBytes / dwSpeedMBs, null);

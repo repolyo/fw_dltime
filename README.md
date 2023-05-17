@@ -2,6 +2,8 @@
 
 Get approximate download time given a FW revision.
 
+<img src="https://github.com/repolyo/fw_dltime/raw/main/output.png"/>
+
 ## Getting Started
 
 To use this package, add fw_dltime as a dependency in your pubspec.yaml file.
