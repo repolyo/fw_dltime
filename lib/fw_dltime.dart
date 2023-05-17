@@ -6,15 +6,16 @@ import 'package:speed_checker_plugin/speed_checker_plugin.dart';
 
 import 'fw_dltime_platform_interface.dart';
 
-typedef DownloadSpeed = void Function(double value, String? error);
+typedef DownloadSpeed = void Function(
+    double dlSpeed, int fwSize, double time, String? error);
 
 class FwDltime {
   final bool debug;
   final SpeedCheckerPlugin plugin = SpeedCheckerPlugin();
   late StreamSubscription<SpeedTestResult> subscription;
-  var currentSpeed = 0.0;
-  var downloadSpeed = 0.0;
-  var uploadSpeed = 0.0;
+  var currentBps = 0.0;
+  var downloadBps = 0.0;
+  var uploadBps = 0.0;
 
   FwDltime({this.debug = false}) {
     plugin.startSpeedTest();
@@ -49,57 +50,61 @@ class FwDltime {
     fwRevision = 'CSLBL.072.202',
   }) async {
     try {
-      final fSize = await getFirmwareFlashFileSize(fwRevision);
-      if (0 == fSize) {
-        callback.call(fSize.toDouble(), 'Unable to get file size: $fSize');
+      const megaBytes = 1024 * 1024;
+      final flashFileBytes = await getFirmwareFlashFileSize(fwRevision);
+      if (0 == flashFileBytes) {
+        callback.call(0.0, 0, flashFileBytes.toDouble(),
+            'Unable to get file size: $flashFileBytes');
       }
 
       if (debug) {
-        debugPrint('==================> Got file size: $fSize');
+        debugPrint('==================> Got file size: $flashFileBytes');
       }
       subscription = plugin.speedTestResultStream.listen(
         (result) async {
-          currentSpeed = result.currentSpeed;
-          downloadSpeed = result.downloadSpeed;
-          uploadSpeed = result.uploadSpeed;
-          const megaBytes = 1024 * 1024;
-          final dwSpeedMBs = downloadSpeed * megaBytes;
+          currentBps = result.currentSpeed;
+          downloadBps = result.downloadSpeed;
+          uploadBps = result.uploadSpeed;
+
+          final dwSpeedMBs = downloadBps * megaBytes;
           final info = await plugin.getIpInfo();
 
           if (debug) {
-            final fwSizeMbs = (fSize / megaBytes).toStringAsFixed(2);
+            final fwSizeMbs = (flashFileBytes / megaBytes).toStringAsFixed(2);
             debugPrint('==================> Internet info: $info');
             debugPrint('status: ${result.status}');
             debugPrint('ping: ${result.ping}');
             debugPrint('percent: ${result.percent}');
-            debugPrint('currentSpeed: ${currentSpeed.toStringAsFixed(2)} Mbps');
-            debugPrint('uploadSpeed: ${uploadSpeed.toStringAsFixed(2)} Mbps');
+            debugPrint('currentSpeed: ${currentBps.toStringAsFixed(2)} Mbps');
+            debugPrint('uploadSpeed: ${uploadBps.toStringAsFixed(2)} Mbps');
 
             debugPrint('==================> Model Name: $fwRevision');
             debugPrint('flash file size: $fwSizeMbs MB');
             debugPrint(
-                'downloadSpeed: ${downloadSpeed.toStringAsFixed(2)} Mbps');
+                'download speed: ${downloadBps.toStringAsFixed(2)} Mbps');
           }
-          callback.call(fSize / dwSpeedMBs, null);
+          callback.call(
+              downloadBps, flashFileBytes, flashFileBytes / dwSpeedMBs, null);
 
           dispose();
         },
         onDone: () {
-          final dwSpeedMBs = downloadSpeed * 1024 * 1024;
+          final dwSpeedMBs = downloadBps * megaBytes;
           if (debug) {
             debugPrint('dwSpeedMBs: $dwSpeedMBs');
           }
-          callback.call(fSize / dwSpeedMBs, null);
+          callback.call(
+              dwSpeedMBs, flashFileBytes, flashFileBytes / dwSpeedMBs, null);
 
           dispose();
         },
         onError: (error) {
-          callback.call(-0.0, error.toString());
+          callback.call(0.0, 0, 0.0, error.toString());
           dispose();
         },
       );
     } catch (e) {
-      callback.call(-0.0, e.toString());
+      callback.call(0.0, 0, 0.0, e.toString());
       dispose();
     }
   }

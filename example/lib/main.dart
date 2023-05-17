@@ -17,12 +17,39 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String _platformVersion = 'Unknown';
-  final _fwDltimePlugin = FwDltime();
+  final _fwRevision = 'CSLBL.072.202';
+  final _fwDltimePlugin = FwDltime(debug: true);
+  late double _downloadTime;
+  late double _downloadSpeed;
+  late int _fwFlashSize;
 
   @override
   void initState() {
     super.initState();
     initPlatformState();
+
+    _fwDltimePlugin.getDownloadTime(
+      fwRevision: _fwRevision,
+      callback: (double dlSpeed, int fwSize, double time, String? error) {
+        if (null != error) {
+          debugPrint('=======> error: $error');
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          _downloadSpeed = dlSpeed;
+          _fwFlashSize = fwSize;
+          _downloadTime = time;
+        });
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _fwDltimePlugin.dispose();
+    super.dispose();
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -55,7 +82,17 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+          child: Column(
+            children: [
+              Text('Running on: $_platformVersion\n'),
+              Text(
+                  'Download Speed: ${_downloadSpeed.toStringAsFixed(2)} Mbps\n'),
+              Text('FW Revision: $_fwRevision\n'),
+              Text('Flash file size: $_fwFlashSize\n'),
+              Text(
+                  'Estimated download time: ${_downloadTime.toStringAsFixed(2)} Mbps\n'),
+            ],
+          ),
         ),
       ),
     );
