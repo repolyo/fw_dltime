@@ -23,7 +23,7 @@ void main() {
   });
 
   test('getPlatformVersion', () async {
-    FwDltime fwDltimePlugin = FwDltime();
+    FwDltime fwDltimePlugin = FwDltime(fwRevision: '');
     MockFwDltimePlatform fakePlatform = MockFwDltimePlatform();
     FwDltimePlatform.instance = fakePlatform;
 

@@ -1,6 +1,25 @@
 # fw_dltime
 
 Get approximate download time given a FW revision.
+Calculation of the download time is done in a two step process:
+1. Get the associated flash file size with the given FW revision.
+2. Check and note the current mobile device network download speed.
+
+Once we have this information, following formula is used to calculate the estimated download time:
+```
+Download time = file size / download speed
+```
+
+For example, let's say we want to download a file that is 100 MB in size and our internet connection speed is 10 Mbps.
+Using the formula above, we can calculate the download time as follows:
+
+```
+Download time = 100 MB / 10 Mbps
+Download time = 100,000,000 bytes / (10,000,000 bits/second)
+Download time = 10 seconds
+```
+
+So, it will take approximately 10 seconds to download the 100 MB file with a 10 Mbps connection speed.
 
 <img src="https://github.com/repolyo/fw_dltime/raw/main/output.png"/>
 
@@ -11,63 +30,24 @@ To use this package, add fw_dltime as a dependency in your pubspec.yaml file.
 ## Usage
 
 ```dart
-    class _MyAppState extends State<MyApp> {
-      final _plugin = FwDltime(debug: true);
-      late double _fwFileSizeBytes;
-      late double _dlSpeedBps;
-      late double _dlTimeSecond;
+    final fwDlCalc = FwDltime(debug: true, fwRevision: _fwRevision);
 
-      @override
-      void initState() {
-        super.initState();
-        const megaBytes = 1024 * 1024;
-
-        _plugin.getDownloadTime(
-          fwRevision: 'CSLBL.072.202',
-          callback: (double dlSpeed, int fwSize, double time, String? error) {
-            if (null != error) {
-              debugPrint('=======> error: $error');
-            }
-            debugPrint('=======> Estimated download time: $time');
-
-            setState(() {
-              _dlSpeedBps = dlSpeed;
-              _fwFileSizeBytes = fwSize;
-              _dlTimeSecond = time;
-            });
-          },
-        );
-      }
-
-      @override
-      void dispose() {
-        _plugin.dispose();
-        super.dispose();
-      }
-
-      @override
-      Widget build(BuildContext context) {
-
-        return MaterialApp(
-          home: Scaffold(
-            appBar: AppBar(
-              title: const Text('FW estimated download time'),
-            ),
-            body: Center(
-              child: Column(
-                children: [
-                  Text(
-                      'Download Speed: ${_dlSpeedBps.toStringAsFixed(2)} Mbps\n'),
-                  Text('FW Revision: $_fwRevision\n'),
-                  Text('Flash file size: $_fwFileSizeBytes\n'),
-                  Text(
-                      'Estimated download time: ${_dlTimeSecond.toStringAsFixed(2)}s\n'),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
-   }
+    fwDlCalc.calculateDownloadTime(
+      // optional callback to know the flash file size
+      fileSizeCallback: (fwSize) {
+        debugPrint('Flash file size: $fwSize');
+      },
+      // called multiple times with percentage from 0-100, 
+      // after which estimated download time is given.
+      (percentage, dlSpeed, time, error) {
+        debugPrint('Percent: $percentage%');
+        debugPrint('Download Speed: ${dlSpeed}Mbps');
+        debugPrint('Estimated download time: ${time}s');
+        if (null != error) {
+          debugPrint('Error found: $error');
+        }
+      };
+    ),
+  );
 ```
 

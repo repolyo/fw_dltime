@@ -6,32 +6,31 @@ import 'package:speed_checker_plugin/speed_checker_plugin.dart';
 
 import 'fw_dltime_platform_interface.dart';
 
-typedef DownloadSpeed = void Function(
-    double dlSpeed, int fwSize, double time, String? error);
+typedef FlashFileSizeCallback = void Function(int fwSize);
+
+typedef DownloadSpeedCallback = void Function(
+    int percentage, double dlSpeed, double time, String? error);
 
 class FwDltime {
+  final megaBytes = 1024 * 1024;
   final bool debug;
+  final String fwRevision;
   final SpeedCheckerPlugin plugin = SpeedCheckerPlugin();
-  late StreamSubscription<SpeedTestResult> subscription;
+  StreamSubscription<SpeedTestResult>? subscription;
+  int fwFileSize = 0;
   var currentBps = 0.0;
   var downloadBps = 0.0;
   var uploadBps = 0.0;
 
-  FwDltime({this.debug = false}) {
-    plugin.startSpeedTest();
-  }
+  FwDltime({required this.fwRevision, this.debug = false});
 
   void dispose() {
-    subscription.cancel();
+    subscription?.cancel();
     plugin.dispose();
   }
 
-  Future<String?> getPlatformVersion() {
-    return FwDltimePlatform.instance.getPlatformVersion();
-  }
-
-  Future<int> getFirmwareFlashFileSize(fwRevision) async {
-    var fwSize = 0;
+  Future<int> getFirmwareFlashFileSize(
+      FlashFileSizeCallback fileSizeCallback) async {
     final data = await FirebaseFirestore.instance
         .collection('flash')
         .doc(fwRevision)
@@ -39,73 +38,97 @@ class FwDltime {
     if (data.exists) {
       var flash = data.data();
       if (null != flash) {
-        fwSize = flash['fwSize'] ?? 0;
+        fwFileSize = flash['fwSize'] ?? 0;
       }
     }
-    return fwSize;
+
+    fileSizeCallback.call(fwFileSize);
+    return fwFileSize;
   }
 
-  Future<void> getDownloadTime({
-    required DownloadSpeed callback,
-    fwRevision = 'CSLBL.072.202',
-  }) async {
-    try {
-      const megaBytes = 1024 * 1024;
-      final flashFileBytes = await getFirmwareFlashFileSize(fwRevision);
-      if (0 == flashFileBytes) {
-        callback.call(0.0, 0, flashFileBytes.toDouble(),
-            'Unable to get file size: $flashFileBytes');
-      }
+  calculateDownloadTime(DownloadSpeedCallback callback,
+      {FlashFileSizeCallback? fileSizeCallback}) async {
+    plugin.startSpeedTest();
 
-      if (debug) {
-        debugPrint('==================> Got file size: $flashFileBytes');
-      }
-      subscription = plugin.speedTestResultStream.listen(
-        (result) async {
-          currentBps = result.currentSpeed;
-          downloadBps = result.downloadSpeed;
-          uploadBps = result.uploadSpeed;
+    if (0 == fwFileSize) {
+      getFirmwareFlashFileSize(fileSizeCallback ??
+          (size) {
+            if (debug) {
+              debugPrint('flash file size: $size');
+            }
+          });
+    }
+    subscription = plugin.speedTestResultStream.listen(
+      (result) async {
+        currentBps = result.currentSpeed;
+        downloadBps = result.downloadSpeed;
+        uploadBps = result.uploadSpeed;
 
+        if (result.error.isNotEmpty == true) {
+          callback.call(
+              result.percent, result.downloadSpeed, 0.0, result.error);
+        }
+
+        if (debug) {
+          debugPrint('status: ${result.status}');
+          debugPrint('ping: ${result.ping}');
+          debugPrint('percent: ${result.percent}');
+        }
+
+        if (0 < fwFileSize && downloadBps > 0) {
+          final flashFileBytes = fwFileSize;
           final dwSpeedMBs = downloadBps * megaBytes;
-          final info = await plugin.getIpInfo();
-
+          final calculatedTime = flashFileBytes / dwSpeedMBs;
           if (debug) {
             final fwSizeMbs = (flashFileBytes / megaBytes).toStringAsFixed(2);
-            debugPrint('==================> Internet info: $info');
-            debugPrint('status: ${result.status}');
-            debugPrint('ping: ${result.ping}');
-            debugPrint('percent: ${result.percent}');
             debugPrint('currentSpeed: ${currentBps.toStringAsFixed(2)} Mbps');
             debugPrint('uploadSpeed: ${uploadBps.toStringAsFixed(2)} Mbps');
-            debugPrint(
-                'download speed: ${downloadBps.toStringAsFixed(2)} Mbps');
+            debugPrint('download speed: ${downloadBps.toStringAsFixed(2)}s');
 
             debugPrint('==================> Model Name: $fwRevision');
             debugPrint('flash file size: $fwSizeMbs MB');
           }
-          callback.call(
-              downloadBps, flashFileBytes, flashFileBytes / dwSpeedMBs, null);
 
-          dispose();
-        },
-        onDone: () {
-          final dwSpeedMBs = downloadBps * megaBytes;
-          if (debug) {
-            debugPrint('dwSpeedMBs: $dwSpeedMBs');
-          }
-          callback.call(
-              dwSpeedMBs, flashFileBytes, flashFileBytes / dwSpeedMBs, null);
-
-          dispose();
-        },
-        onError: (error) {
-          callback.call(0.0, 0, 0.0, error.toString());
-          dispose();
-        },
-      );
-    } catch (e) {
-      callback.call(0.0, 0, 0.0, e.toString());
-      dispose();
-    }
+          callback.call(result.percent, downloadBps, calculatedTime, null);
+        } else {
+          callback.call(result.percent, result.downloadSpeed, 0.0, null);
+        }
+      },
+      onDone: () {
+        dispose();
+      },
+      onError: (error) {
+        callback.call(100, 0.0, 0.0, error.toString());
+        dispose();
+      },
+    );
   }
+
+  Future<String?> getPlatformVersion() {
+    return FwDltimePlatform.instance.getPlatformVersion();
+  }
+
+  //
+  // Future<void> getDownloadTime({
+  //   required DownloadSpeedCallback callback,
+  //   fwRevision = 'CSLBL.072.202',
+  // }) async {
+  //   _callback = callback;
+  //   _fwRevision = fwRevision;
+  //   try {
+  //     _flashFileBytes = await getFirmwareFlashFileSize(fwRevision);
+  //     if (0 == _flashFileBytes) {
+  //       callback.call(0.0, 0, _flashFileBytes!.toDouble(),
+  //           'Unable to get file size: $_flashFileBytes');
+  //       dispose();
+  //     }
+  //
+  //     if (debug) {
+  //       debugPrint('==================> Got file size: $_flashFileBytes');
+  //     }
+  //   } catch (e) {
+  //     _callback?.call(0.0, 0, 0.0, e.toString());
+  //     dispose();
+  //   }
+  // }
 }
