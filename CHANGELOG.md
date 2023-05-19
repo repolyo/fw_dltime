@@ -2,7 +2,14 @@
 
 * initial release.
 
-## 0.0.1-dev.10
+## 0.0.1-dev.11
 
 * Refactored code to simplify operation.
 * Updated docs
+
+## 0.0.1-dev.11
+
+* Code clean-up.
+* Have client optionally provide file size for download.
+* Updated docs
+* Updated example app icon

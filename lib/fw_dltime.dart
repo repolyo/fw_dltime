@@ -22,7 +22,11 @@ class FwDltime {
   var downloadBps = 0.0;
   var uploadBps = 0.0;
 
-  FwDltime({required this.fwRevision, this.debug = false});
+  FwDltime({required this.fwRevision, this.fwFileSize = 0, this.debug = false});
+
+  void cancel() {
+    subscription?.cancel();
+  }
 
   void dispose() {
     subscription?.cancel();
@@ -64,10 +68,8 @@ class FwDltime {
         downloadBps = result.downloadSpeed;
         uploadBps = result.uploadSpeed;
 
-        if (result.error.isNotEmpty == true) {
-          callback.call(
-              result.percent, result.downloadSpeed, 0.0, result.error);
-        }
+        final message =
+            result.warning.isNotEmpty ? result.warning : result.error;
 
         if (debug) {
           debugPrint('status: ${result.status}');
@@ -89,9 +91,9 @@ class FwDltime {
             debugPrint('flash file size: $fwSizeMbs MB');
           }
 
-          callback.call(result.percent, downloadBps, calculatedTime, null);
+          callback.call(result.percent, downloadBps, calculatedTime, message);
         } else {
-          callback.call(result.percent, result.downloadSpeed, 0.0, null);
+          callback.call(result.percent, result.downloadSpeed, 0.0, message);
         }
       },
       onDone: () {
@@ -107,28 +109,4 @@ class FwDltime {
   Future<String?> getPlatformVersion() {
     return FwDltimePlatform.instance.getPlatformVersion();
   }
-
-  //
-  // Future<void> getDownloadTime({
-  //   required DownloadSpeedCallback callback,
-  //   fwRevision = 'CSLBL.072.202',
-  // }) async {
-  //   _callback = callback;
-  //   _fwRevision = fwRevision;
-  //   try {
-  //     _flashFileBytes = await getFirmwareFlashFileSize(fwRevision);
-  //     if (0 == _flashFileBytes) {
-  //       callback.call(0.0, 0, _flashFileBytes!.toDouble(),
-  //           'Unable to get file size: $_flashFileBytes');
-  //       dispose();
-  //     }
-  //
-  //     if (debug) {
-  //       debugPrint('==================> Got file size: $_flashFileBytes');
-  //     }
-  //   } catch (e) {
-  //     _callback?.call(0.0, 0, 0.0, e.toString());
-  //     dispose();
-  //   }
-  // }
 }

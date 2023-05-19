@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,7 +27,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _messageController = TextEditingController();
-
   String _platformVersion = 'Unknown';
   String _fwRevision = 'CSLBL.072.202';
   FwDltime? _fwDltimePlugin;
@@ -40,22 +37,25 @@ class _MyAppState extends State<MyApp> {
   int _percentage = 0;
 
   @override
-  void initState() {
-    super.initState();
-    initPlatformState();
-  }
-
-  @override
   void dispose() {
     _fwDltimePlugin?.dispose();
     super.dispose();
   }
 
-  calculateDownloadTime(fwRevision) {
+  calculateDownloadTime(fwRevision) async {
+    String platformVersion;
     _fwDltimePlugin?.dispose();
     _fwRevision = fwRevision;
     _fwDltimePlugin = FwDltime(debug: true, fwRevision: _fwRevision);
 
+    try {
+      platformVersion = await _fwDltimePlugin?.getPlatformVersion() ??
+          'Unknown platform version';
+    } on PlatformException {
+      platformVersion = 'Failed to get platform version.';
+    }
+
+    _platformVersion = platformVersion;
     _fwDltimePlugin?.calculateDownloadTime((percentage, dlSpeed, time, error) {
       if (!mounted || 0 == percentage) return;
 
@@ -75,31 +75,30 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     Widget body = const Text('');
 
-    if (null == _error && 0 == _downloadTime && 0 < _percentage) {
+    if (0 == _downloadTime && 0 < _percentage) {
       body = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const CircularProgressIndicator(strokeWidth: 10),
           const SizedBox(height: 8.0),
           Text(_message),
+          Text(
+            _error ?? '',
+            style: const TextStyle(color: Colors.red),
+          ),
         ],
       );
-    } else if (_error?.isNotEmpty == true) {
-      body = Text(
-        _error ?? '',
-        style: const TextStyle(
-            color: Colors.red, fontSize: 16, fontWeight: FontWeight.w900),
-      );
     } else if (0 < _downloadTime) {
+      _fwDltimePlugin?.cancel();
+
       body = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text('Running on: $_platformVersion\n'),
-          Text('Download Speed: ${_downloadSpeed.toStringAsFixed(2)} Mbps\n'),
-          Text('FW Revision: $_fwRevision\n'),
-          Text('Flash file size: ${_fwDltimePlugin?.fwFileSize}\n'),
-          Text(
-              'Estimated download time: ${_downloadTime.toStringAsFixed(2)}s\n'),
+          Text('Download Speed: ${_downloadSpeed.toStringAsFixed(2)} Mbps'),
+          Text('FW Revision: $_fwRevision'),
+          Text('Flash file size: ${_fwDltimePlugin?.fwFileSize} bytes'),
+          Text('Estimated download time: ${_downloadTime.toStringAsFixed(2)}s'),
         ],
       );
     }
@@ -107,7 +106,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('FW Download Calculator'),
+          title: const Text('Download Time Calculator'),
         ),
         body: SafeArea(
           child: Column(
@@ -142,6 +141,7 @@ class _MyAppState extends State<MyApp> {
                       onPressed: () {
                         calculateDownloadTime(_fwRevision);
                         setState(() {
+                          _error = null;
                           _message = 'Calculating ...';
                           _percentage = 1;
                           _downloadTime = 0;
@@ -156,27 +156,5 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
-  }
-
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion = await _fwDltimePlugin?.getPlatformVersion() ??
-          'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
   }
 }
