@@ -6,7 +6,7 @@ import 'package:speed_checker_plugin/speed_checker_plugin.dart';
 
 import 'fw_dltime_platform_interface.dart';
 
-typedef FlashFileSizeCallback = void Function(int fwSize);
+typedef FlashFileSizeCallback = void Function(int fwSize, {String? error});
 
 typedef DownloadSpeedCallback = void Function(
     int percentage, double dlSpeed, double time, String? error);
@@ -14,9 +14,9 @@ typedef DownloadSpeedCallback = void Function(
 class FwDltime {
   final megaBytes = 1024 * 1024;
   final bool debug;
-  final String fwRevision;
-  final SpeedCheckerPlugin plugin = SpeedCheckerPlugin();
-  StreamSubscription<SpeedTestResult>? subscription;
+  final SpeedCheckerPlugin _plugin = SpeedCheckerPlugin();
+  StreamSubscription<SpeedTestResult>? _subscription;
+  String fwRevision;
   int fwFileSize = 0;
   var currentBps = 0.0;
   var downloadBps = 0.0;
@@ -25,45 +25,86 @@ class FwDltime {
   FwDltime({required this.fwRevision, this.fwFileSize = 0, this.debug = false});
 
   void cancel() {
-    subscription?.cancel();
+    _subscription?.cancel();
   }
 
   void dispose() {
-    subscription?.cancel();
-    plugin.dispose();
+    _subscription?.cancel();
+    _plugin.dispose();
   }
 
   Future<int> getFirmwareFlashFileSize(
       FlashFileSizeCallback fileSizeCallback) async {
-    final data = await FirebaseFirestore.instance
-        .collection('flash')
-        .doc(fwRevision)
-        .get();
-    if (data.exists) {
-      var flash = data.data();
-      if (null != flash) {
-        fwFileSize = flash['fwSize'] ?? 0;
+    try {
+      final table = FirebaseFirestore.instance.collection('flash');
+      final data = await table.doc(fwRevision).get();
+      if (data.exists) {
+        var flash = data.data();
+        if (null != flash) {
+          fwFileSize = flash['fwSize'] ?? 0;
+        }
+        fileSizeCallback.call(fwFileSize);
+      } else {
+        // try and see if we can find something similar
+        final strFrontCode = fwRevision.substring(0, fwRevision.length - 1);
+        final strEndCode = fwRevision.characters.last;
+        final limit =
+            strFrontCode + String.fromCharCode(strEndCode.codeUnitAt(0) + 1);
+
+        final records = await table
+            .where('fwCode', isGreaterThanOrEqualTo: fwRevision)
+            .where('fwCode', isLessThan: limit)
+            .get();
+
+        debugPrint('found: ${records.docs.length}');
+        if (records.docs.isEmpty) {
+          fileSizeCallback.call(0, error: 'No record found: \'$fwRevision\'');
+        } else {
+          final doc = records.docs.firstOrNull;
+          if (null == doc) {
+            fileSizeCallback.call(0, error: 'No record found: \'$fwRevision\'');
+          } else {
+            fwFileSize = doc['fwSize'] ?? 0;
+            fwRevision = doc['fwCode'] ?? fwRevision;
+
+            if (debug) {
+              debugPrint('=======================> Model: $fwRevision');
+              debugPrint('=======================> Size: $fwFileSize');
+            }
+          }
+        }
       }
+    } catch (e) {
+      fwFileSize = 0;
+      fileSizeCallback.call(fwFileSize, error: e.toString());
     }
 
-    fileSizeCallback.call(fwFileSize);
     return fwFileSize;
   }
 
   calculateDownloadTime(DownloadSpeedCallback callback,
       {FlashFileSizeCallback? fileSizeCallback}) async {
-    plugin.startSpeedTest();
+    _plugin.startSpeedTest();
 
     if (0 == fwFileSize) {
-      getFirmwareFlashFileSize(fileSizeCallback ??
-          (size) {
+      fwFileSize = await getFirmwareFlashFileSize(fileSizeCallback ??
+          (size, {error}) {
+            if (null != error) {
+              debugPrint('Error: $error');
+              callback.call(100, downloadBps, 0, error);
+              _subscription?.cancel();
+            }
             if (debug) {
               debugPrint('flash file size: $size');
             }
           });
+
+      // bail-out if we are unable to get the file size.
+      if (0 == fwFileSize) return;
     }
-    subscription = plugin.speedTestResultStream.listen(
+    _subscription = _plugin.speedTestResultStream.listen(
       (result) async {
+        final progress = result.percent - 1;
         currentBps = result.currentSpeed;
         downloadBps = result.downloadSpeed;
         uploadBps = result.uploadSpeed;
@@ -91,9 +132,9 @@ class FwDltime {
             debugPrint('flash file size: $fwSizeMbs MB');
           }
 
-          callback.call(result.percent, downloadBps, calculatedTime, message);
+          callback.call(progress, downloadBps, calculatedTime, message);
         } else {
-          callback.call(result.percent, result.downloadSpeed, 0.0, message);
+          callback.call(progress, result.downloadSpeed, 0.0, message);
         }
       },
       onDone: () {

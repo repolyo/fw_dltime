@@ -46,7 +46,7 @@ class _MyAppState extends State<MyApp> {
     String platformVersion;
     _fwDltimePlugin?.dispose();
     _fwRevision = fwRevision;
-    _fwDltimePlugin = FwDltime(debug: true, fwRevision: _fwRevision);
+    _fwDltimePlugin = FwDltime(debug: false, fwRevision: _fwRevision);
 
     try {
       platformVersion = await _fwDltimePlugin?.getPlatformVersion() ??
@@ -60,11 +60,12 @@ class _MyAppState extends State<MyApp> {
       if (!mounted || 0 == percentage) return;
 
       setState(() {
-        _error = 100 == _percentage ? null : error;
+        _error = error;
         _percentage = percentage;
         _downloadSpeed = dlSpeed;
         _downloadTime = time;
-        if (100 > percentage) {
+        _message = '';
+        if (0 < percentage && percentage < 100) {
           _message = 'Calculating $percentage% ...';
         }
       });
@@ -75,20 +76,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     Widget body = const Text('');
 
-    if (0 == _downloadTime && 0 < _percentage) {
-      body = Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(strokeWidth: 10),
-          const SizedBox(height: 8.0),
-          Text(_message),
-          Text(
-            _error ?? '',
-            style: const TextStyle(color: Colors.red),
-          ),
-        ],
-      );
-    } else if (0 < _downloadTime) {
+    if (0 < _downloadTime) {
       _fwDltimePlugin?.cancel();
 
       body = Column(
@@ -96,9 +84,23 @@ class _MyAppState extends State<MyApp> {
         children: [
           Text('Running on: $_platformVersion\n'),
           Text('Download Speed: ${_downloadSpeed.toStringAsFixed(2)} Mbps'),
-          Text('FW Revision: $_fwRevision'),
+          Text('FW Revision: ${_fwDltimePlugin?.fwRevision ?? _fwRevision}'),
           Text('Flash file size: ${_fwDltimePlugin?.fwFileSize} bytes'),
           Text('Estimated download time: ${_downloadTime.toStringAsFixed(2)}s'),
+        ],
+      );
+    } else {
+      body = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (100 > _percentage)
+            const CircularProgressIndicator(strokeWidth: 10),
+          const SizedBox(height: 8.0),
+          Text(_message),
+          Text(
+            _error ?? '',
+            style: const TextStyle(color: Colors.red),
+          ),
         ],
       );
     }
