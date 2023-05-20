@@ -22,8 +22,8 @@ Download time = 10 seconds
 So, it will take approximately 10 seconds to download the 100 MB file with a 10 Mbps connection speed.
 
 <p float="left">
-<img src="https://github.com/repolyo/fw_dltime/raw/main/fw_dltime.png" width=200/>
-<img src="https://github.com/repolyo/fw_dltime/raw/main/fw_dltime_android.png" width=200
+<img src="https://github.com/repolyo/fw_dltime/raw/main/fw_dltime.png" width=300/>
+<img src="https://github.com/repolyo/fw_dltime/raw/main/fw_dltime_android.png" width=300
 </p>
 
 ## Getting Started
