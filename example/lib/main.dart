@@ -25,19 +25,51 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   final _messageController = TextEditingController();
+  late AnimationController _animationController;
+  late Animation _animation;
   String _platformVersion = 'Unknown';
   String _fwRevision = 'CSLBL.072.202';
   FwDltime? _fwDltimePlugin;
   String? _error;
   double _downloadTime = 0.0;
   double _downloadSpeed = 0.0;
-  String _message = 'Fetching file size...';
+  String _message = '';
   int _percentage = 0;
+  int _index = 0;
+
+  @override
+  void initState() {
+    _animationController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 1));
+
+    _animation =
+        CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
+    super.initState();
+
+    _animation.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _animationController.reverse(from: 1.0);
+      } else if (status == AnimationStatus.dismissed) {
+        _animationController.forward();
+      }
+    });
+
+    _animationController.addListener(() {
+      double doubleValue = _animation.value * 5;
+      int intVaue = doubleValue.toInt();
+      if (intVaue == _index) return; // refresh screen only if necessary!
+
+      setState(() {
+        _index = intVaue;
+      });
+    });
+  }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _fwDltimePlugin?.dispose();
     super.dispose();
   }
@@ -77,6 +109,7 @@ class _MyAppState extends State<MyApp> {
     Widget body = const Text('');
 
     if (0 < _downloadTime) {
+      _animationController.stop();
       _fwDltimePlugin?.cancel();
 
       body = Column(
@@ -93,7 +126,7 @@ class _MyAppState extends State<MyApp> {
       body = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (100 > _percentage)
+          if (0 < _percentage && 100 > _percentage)
             const CircularProgressIndicator(strokeWidth: 10),
           const SizedBox(height: 8.0),
           Text(_message),
@@ -139,8 +172,11 @@ class _MyAppState extends State<MyApp> {
                       iconSize: 50,
                       focusColor: Colors.orange.withOpacity(0.3),
                       tooltip: 'Calculate',
-                      icon: const Icon(Icons.network_check_rounded),
+                      icon: _animationController.isAnimating
+                          ? Image.asset('images/wifi_$_index.png')
+                          : const Icon(Icons.network_check),
                       onPressed: () {
+                        _animationController.forward();
                         calculateDownloadTime(_fwRevision);
                         setState(() {
                           _error = null;

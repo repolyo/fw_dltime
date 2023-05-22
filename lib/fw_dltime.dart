@@ -18,6 +18,8 @@ class FwDltime {
   StreamSubscription<SpeedTestResult>? _subscription;
   String fwRevision;
   int fwFileSize = 0;
+  int calculationTime = 0;
+  DateTime _startTime = DateTime.now();
   var currentBps = 0.0;
   var downloadBps = 0.0;
   var uploadBps = 0.0;
@@ -47,13 +49,13 @@ class FwDltime {
       } else {
         // try and see if we can find something similar
         final strFrontCode = fwRevision.substring(0, fwRevision.length - 1);
-        final strEndCode = fwRevision.characters.last;
-        final limit =
-            strFrontCode + String.fromCharCode(strEndCode.codeUnitAt(0) + 1);
+        final lastChar = fwRevision.characters.last;
+        final strEndCode =
+            strFrontCode + String.fromCharCode(lastChar.codeUnitAt(0) + 1);
 
         final records = await table
             .where('fwCode', isGreaterThanOrEqualTo: fwRevision)
-            .where('fwCode', isLessThan: limit)
+            .where('fwCode', isLessThan: strEndCode)
             .get();
 
         debugPrint('found: ${records.docs.length}');
@@ -84,6 +86,7 @@ class FwDltime {
 
   calculateDownloadTime(DownloadSpeedCallback callback,
       {FlashFileSizeCallback? fileSizeCallback}) async {
+    _startTime = DateTime.now();
     _plugin.startSpeedTest();
 
     if (0 == fwFileSize) {
@@ -122,6 +125,9 @@ class FwDltime {
           final flashFileBytes = fwFileSize;
           final dwSpeedMBs = downloadBps * megaBytes;
           final calculatedTime = flashFileBytes / dwSpeedMBs;
+          calculationTime =
+              _diffBetweenTwoDatesInSeconds(_startTime, DateTime.now());
+
           if (debug) {
             final fwSizeMbs = (flashFileBytes / megaBytes).toStringAsFixed(2);
             debugPrint('currentSpeed: ${currentBps.toStringAsFixed(2)} Mbps');
@@ -130,6 +136,9 @@ class FwDltime {
 
             debugPrint('==================> Model Name: $fwRevision');
             debugPrint('flash file size: $fwSizeMbs MB');
+
+            debugPrint(
+                'Calculated in about: ${calculationTime.toStringAsFixed(2)}s');
           }
 
           callback.call(progress, downloadBps, calculatedTime, message);
@@ -149,5 +158,12 @@ class FwDltime {
 
   Future<String?> getPlatformVersion() {
     return FwDltimePlatform.instance.getPlatformVersion();
+  }
+
+  int _diffBetweenTwoDatesInSeconds(
+    final DateTime startDate,
+    final DateTime endDate,
+  ) {
+    return endDate.difference(startDate).inSeconds;
   }
 }

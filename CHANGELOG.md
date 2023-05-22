@@ -7,7 +7,7 @@
 * Refactored code to simplify operation.
 * Updated docs
 
-## 0.0.1-dev.13
+## 0.0.1-dev.14
 
 * Code clean-up.
 * Have client optionally provide file size for download.
