@@ -1,6 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:fw_dltime/fw_dltime.dart';
 
 import 'firebase_options.dart';
@@ -29,8 +28,7 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   final _messageController = TextEditingController();
   late AnimationController _animationController;
   late Animation _animation;
-  String _platformVersion = 'Unknown';
-  String _fwRevision = 'CSLBL.072.202';
+  String _fwRevision = 'CSLBL.081';
   FwDltime? _fwDltimePlugin;
   String? _error;
   double _downloadTime = 0.0;
@@ -80,14 +78,6 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
     _fwRevision = fwRevision;
     _fwDltimePlugin = FwDltime(debug: false, fwRevision: _fwRevision);
 
-    try {
-      platformVersion = await _fwDltimePlugin?.getPlatformVersion() ??
-          'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    _platformVersion = platformVersion;
     _fwDltimePlugin?.calculateDownloadTime((percentage, dlSpeed, time, error) {
       if (!mounted || 0 == percentage) return;
 
@@ -115,7 +105,6 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
       body = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('Running on: $_platformVersion\n'),
           Text('Download Speed: ${_downloadSpeed.toStringAsFixed(2)} Mbps'),
           Text('FW Revision: ${_fwDltimePlugin?.fwRevision ?? _fwRevision}'),
           Text('Flash file size: ${_fwDltimePlugin?.fwFileSize} bytes'),
@@ -123,6 +112,11 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
         ],
       );
     } else {
+      if (100 == _percentage) {
+        // were done
+        _animationController.stop();
+      }
+
       body = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -195,4 +189,6 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
       ),
     );
   }
+
+  noError() => 0 < _percentage && 100 > _percentage;
 }

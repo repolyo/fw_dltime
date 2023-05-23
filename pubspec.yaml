@@ -1,6 +1,6 @@
 name: fw_dltime
 description: Get approximate download time given a target file size for download.
-version: 0.0.1-dev.14
+version: 0.0.1-dev.15
 homepage: https://github.com/repolyo/fw_dltime.git
 
 environment:
@@ -18,12 +18,3 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-
-flutter:
-  plugin:
-    platforms:
-      android:
-        package: com.lexmark.fw_dltime
-        pluginClass: FwDltimePlugin
-      ios:
-        pluginClass: FwDltimePlugin

@@ -1,10 +1,10 @@
+library fw_dltime;
+
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:speed_checker_plugin/speed_checker_plugin.dart';
-
-import 'fw_dltime_platform_interface.dart';
 
 typedef FlashFileSizeCallback = void Function(int fwSize, {String? error});
 
@@ -24,7 +24,8 @@ class FwDltime {
   var downloadBps = 0.0;
   var uploadBps = 0.0;
 
-  FwDltime({required this.fwRevision, this.fwFileSize = 0, this.debug = false});
+  FwDltime(
+      {this.fwRevision = 'CSLBL.081', this.fwFileSize = 0, this.debug = false});
 
   void cancel() {
     _subscription?.cancel();
@@ -45,7 +46,11 @@ class FwDltime {
         if (null != flash) {
           fwFileSize = flash['fwSize'] ?? 0;
         }
-        fileSizeCallback.call(fwFileSize);
+        if (0 < fwFileSize) {
+          fileSizeCallback.call(fwFileSize);
+        } else {
+          fileSizeCallback.call(0, error: 'No record found: \'$fwRevision\'');
+        }
       } else {
         // try and see if we can find something similar
         final strFrontCode = fwRevision.substring(0, fwRevision.length - 1);
@@ -61,6 +66,10 @@ class FwDltime {
         debugPrint('found: ${records.docs.length}');
         if (records.docs.isEmpty) {
           fileSizeCallback.call(0, error: 'No record found: \'$fwRevision\'');
+
+          // insert not found FW revision to our DB so we would know which
+          // FW revision needs data and be populated later on...
+          table.doc(fwRevision).set({'fwCode': fwRevision, 'fwSize': 0});
         } else {
           final doc = records.docs.firstOrNull;
           if (null == doc) {
@@ -154,10 +163,6 @@ class FwDltime {
         dispose();
       },
     );
-  }
-
-  Future<String?> getPlatformVersion() {
-    return FwDltimePlatform.instance.getPlatformVersion();
   }
 
   int _diffBetweenTwoDatesInSeconds(
