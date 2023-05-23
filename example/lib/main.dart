@@ -73,7 +73,6 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   }
 
   calculateDownloadTime(fwRevision) async {
-    String platformVersion;
     _fwDltimePlugin?.dispose();
     _fwRevision = fwRevision;
     _fwDltimePlugin = FwDltime(debug: false, fwRevision: _fwRevision);
@@ -189,6 +188,4 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
       ),
     );
   }
-
-  noError() => 0 < _percentage && 100 > _percentage;
 }
