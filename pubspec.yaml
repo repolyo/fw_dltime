@@ -1,6 +1,6 @@
 name: fw_dltime
 description: Get approximate download time given a target file size for download.
-version: 0.0.1-dev.16
+version: 0.0.1-dev.17
 homepage: https://github.com/repolyo/fw_dltime.git
 
 environment:
