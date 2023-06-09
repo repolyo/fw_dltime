@@ -635,8 +635,6 @@ PODS:
     - leveldb-library (~> 1.22)
     - nanopb (< 2.30910.0, >= 2.30908.0)
   - Flutter (1.0.0)
-  - fw_dltime (0.0.1):
-    - Flutter
   - GoogleUtilities/Environment (7.11.1):
     - PromisesObjC (< 3.0, >= 1.2)
   - GoogleUtilities/Logger (7.11.1):
@@ -708,18 +706,12 @@ PODS:
   - nanopb/decode (2.30909.0)
   - nanopb/encode (2.30909.0)
   - PromisesObjC (2.2.0)
-  - speed_checker_plugin (1.0.14):
-    - Flutter
-    - SpeedcheckerSDK (= 1.5.66)
-  - SpeedcheckerSDK (1.5.66)
 
 DEPENDENCIES:
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - Flutter (from `Flutter`)
-  - fw_dltime (from `.symlinks/plugins/fw_dltime/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-  - speed_checker_plugin (from `.symlinks/plugins/speed_checker_plugin/ios`)
 
 SPEC REPOS:
   trunk:
@@ -745,12 +737,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/firebase_core/ios"
   Flutter:
     :path: Flutter
-  fw_dltime:
-    :path: ".symlinks/plugins/fw_dltime/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
-  speed_checker_plugin:
-    :path: ".symlinks/plugins/speed_checker_plugin/ios"
 
 SPEC CHECKSUMS:
   abseil: ebe5b5529fb05d93a8bdb7951607be08b7fa71bc
@@ -762,7 +750,6 @@ SPEC CHECKSUMS:
   FirebaseCoreInternal: d2b4acb827908e72eca47a9fd896767c3053921e
   FirebaseFirestore: 584d0e1b0f7f1666c516c5157ff06e785bd8836f
   Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
-  fw_dltime: 96fb93f95b336c26247875dc44234387c4a24e19
   GoogleUtilities: 9aa0ad5a7bc171f8bae016300bfcfa3fb8425749
   "gRPC-C++": 9675f953ace2b3de7c506039d77be1f2e77a8db2
   gRPC-Core: 943e491cb0d45598b0b0eb9e910c88080369290b
@@ -771,8 +758,6 @@ SPEC CHECKSUMS:
   Libuv-gRPC: 55e51798e14ef436ad9bc45d12d43b77b49df378
   nanopb: b552cce312b6c8484180ef47159bc0f65a1f0431
   PromisesObjC: 09985d6d70fbe7878040aa746d78236e6946d2ef
-  speed_checker_plugin: 81b4f93d96d4af9bef8cd48632b8a38b0a597329
-  SpeedcheckerSDK: 9d05a04bfb19a4e4495227fc85a8129fd6b44d9f
 
 PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
 

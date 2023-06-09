@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:speed_checker_plugin/speed_checker_plugin.dart';
+import 'package:flutter_internet_speed_test/flutter_internet_speed_test.dart';
 
 typedef FlashFileSizeCallback = void Function(int fwSize, {String? error});
 
@@ -12,14 +12,12 @@ typedef DownloadSpeedCallback = void Function(
     int percentage, double dlSpeed, double time, String? error);
 
 class FwDltime {
+  FlutterInternetSpeedTest? _plugin;
   final megaBytes = 1024 * 1024;
   final bool debug;
-  final SpeedCheckerPlugin _plugin = SpeedCheckerPlugin();
-  StreamSubscription<SpeedTestResult>? _subscription;
   String fwRevision;
   int fwFileSize = 0;
   int calculationTime = 0;
-  DateTime _startTime = DateTime.now();
   var currentBps = 0.0;
   var downloadBps = 0.0;
   var uploadBps = 0.0;
@@ -28,12 +26,12 @@ class FwDltime {
       {this.fwRevision = 'CSLBL.081', this.fwFileSize = 0, this.debug = false});
 
   void cancel() {
-    _subscription?.cancel();
+    _plugin?.cancelTest();
   }
 
   void dispose() {
-    _subscription?.cancel();
-    _plugin.dispose();
+    _plugin?.cancelTest();
+    _plugin = null;
   }
 
   Future<int> getFirmwareFlashFileSize(
@@ -95,16 +93,12 @@ class FwDltime {
 
   calculateDownloadTime(DownloadSpeedCallback callback,
       {FlashFileSizeCallback? fileSizeCallback}) async {
-    _startTime = DateTime.now();
-    _plugin.startSpeedTest();
-
     if (0 == fwFileSize) {
       fwFileSize = await getFirmwareFlashFileSize(fileSizeCallback ??
           (size, {error}) {
             if (null != error) {
               debugPrint('Error: $error');
               callback.call(100, downloadBps, 0, error);
-              _subscription?.cancel();
             }
             if (debug) {
               debugPrint('flash file size: $size');
@@ -114,61 +108,60 @@ class FwDltime {
       // bail-out if we are unable to get the file size.
       if (0 == fwFileSize) return;
     }
-    _subscription = _plugin.speedTestResultStream.listen(
-      (result) async {
-        final progress = result.percent - 1;
-        currentBps = result.currentSpeed;
-        downloadBps = result.downloadSpeed;
-        uploadBps = result.uploadSpeed;
+
+    _plugin?.cancelTest();
+    _plugin = FlutterInternetSpeedTest();
+    _plugin?.startTesting(
+      fileSizeInBytes: fwFileSize,
+      onStarted: () {
+        debugPrint('onStarted');
+      },
+      onCompleted: (TestResult download, TestResult upload) {
+        debugPrint('onCompleted');
+      },
+      onProgress: (double percent, TestResult data) {
+        if (data.type == TestType.download) {
+          final unitText = data.unit == SpeedUnit.kbps ? 'Kbps' : 'Mbps';
+
+          callback.call(percent.toInt(), data.transferRate, 0.0,
+              'Download Rate: ${data.transferRate} $unitText');
+        }
+      },
+      onError: (String errorMessage, String speedTestError) {
+        callback.call(100, 0.0, 0.0, '$errorMessage -- $speedTestError');
+      },
+      onDefaultServerSelectionInProgress: () {
+        debugPrint(
+            'onDefaultServerSelectionInProgress: Only when you use useFastApi parameter as true(default)');
+      },
+      onDefaultServerSelectionDone: (Client? client) {
+        debugPrint(
+            'onDefaultServerSelectionDone: Only when you use useFastApi parameter as true(default)');
+      },
+      onDownloadComplete: (TestResult data) {
+        final unitText = data.unit == SpeedUnit.kbps ? 'Kbps' : 'Mbps';
+        // _unitText = data.unit == SpeedUnit.kbps ? 'Kbps' : 'Mbps';
+        downloadBps = data.transferRate;
+        calculationTime = data.durationInMillis;
+
+        final calculatedTime = fwFileSize /
+            ((SpeedUnit.kbps == data.unit)
+                ? (downloadBps * 1024)
+                : (downloadBps * 1024 * 1024));
 
         final message =
-            result.warning.isNotEmpty ? result.warning : result.error;
-
-        if (debug) {
-          debugPrint('status: ${result.status}');
-          debugPrint('ping: ${result.ping}');
-          debugPrint('percent: ${result.percent}');
-        }
-
-        if (0 < fwFileSize && downloadBps > 0) {
-          final flashFileBytes = fwFileSize;
-          final dwSpeedMBs = downloadBps * megaBytes;
-          final calculatedTime = flashFileBytes / dwSpeedMBs;
-          calculationTime =
-              _diffBetweenTwoDatesInSeconds(_startTime, DateTime.now());
-
-          if (debug) {
-            final fwSizeMbs = (flashFileBytes / megaBytes).toStringAsFixed(2);
-            debugPrint('currentSpeed: ${currentBps.toStringAsFixed(2)} Mbps');
-            debugPrint('uploadSpeed: ${uploadBps.toStringAsFixed(2)} Mbps');
-            debugPrint('download speed: ${downloadBps.toStringAsFixed(2)}s');
-
-            debugPrint('==================> Model Name: $fwRevision');
-            debugPrint('flash file size: $fwSizeMbs MB');
-
-            debugPrint(
-                'Calculated in about: ${calculationTime.toStringAsFixed(2)}s');
-          }
-
-          callback.call(progress, downloadBps, calculatedTime, message);
-        } else {
-          callback.call(progress, result.downloadSpeed, 0.0, message);
-        }
+            'Download Rate: ${data.transferRate} $unitText, durationInMillis ${data.durationInMillis}';
+        debugPrint('onDownloadComplete: $message');
+        callback.call(100, downloadBps, calculatedTime, message);
+        _plugin?.cancelTest();
       },
-      onDone: () {
-        dispose();
+      onUploadComplete: (TestResult data) {
+        debugPrint('onUploadComplete: $data');
       },
-      onError: (error) {
-        callback.call(100, 0.0, 0.0, error.toString());
-        dispose();
+      onCancel: () {
+        // TODO Request cancelled callback
+        debugPrint('onCancel');
       },
     );
-  }
-
-  int _diffBetweenTwoDatesInSeconds(
-    final DateTime startDate,
-    final DateTime endDate,
-  ) {
-    return endDate.difference(startDate).inSeconds;
   }
 }
