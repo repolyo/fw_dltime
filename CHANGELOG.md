@@ -15,7 +15,7 @@
 * Updated example app icon
 * If no FW match, lookup nearest FW version to use to get the flash file size.
 
-## 0.0.1-dev.15
+## 0.0.1-dev.16
 
 * Converted to package.
 * Insert not found revision to DB
