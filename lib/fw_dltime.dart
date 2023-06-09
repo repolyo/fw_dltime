@@ -63,11 +63,17 @@ class FwDltime {
 
         debugPrint('found: ${records.docs.length}');
         if (records.docs.isEmpty) {
-          fileSizeCallback.call(0, error: 'No record found: \'$fwRevision\'');
+          if (debug) {
+            debugPrint('No record found: \'$fwRevision\'');
+          }
 
           // insert not found FW revision to our DB so we would know which
           // FW revision needs data and be populated later on...
           table.doc(fwRevision).set({'fwCode': fwRevision, 'fwSize': 0});
+
+          // provide the maximum FW size for client to have valid estimated
+          // download time.
+          fwFileSize = 153092096;
         } else {
           final doc = records.docs.firstOrNull;
           if (null == doc) {
@@ -140,7 +146,6 @@ class FwDltime {
       },
       onDownloadComplete: (TestResult data) {
         final unitText = data.unit == SpeedUnit.kbps ? 'Kbps' : 'Mbps';
-        // _unitText = data.unit == SpeedUnit.kbps ? 'Kbps' : 'Mbps';
         downloadBps = data.transferRate;
         calculationTime = data.durationInMillis;
 
@@ -149,10 +154,11 @@ class FwDltime {
                 ? (downloadBps * 1024)
                 : (downloadBps * 1024 * 1024));
 
-        final message =
-            'Download Rate: ${data.transferRate} $unitText, durationInMillis ${data.durationInMillis}';
-        debugPrint('onDownloadComplete: $message');
-        callback.call(100, downloadBps, calculatedTime, message);
+        if (debug) {
+          debugPrint(
+              'onDownloadComplete: Download Rate: ${data.transferRate} $unitText, durationInMillis ${data.durationInMillis}');
+        }
+        callback.call(100, downloadBps, calculatedTime, null);
         _plugin?.cancelTest();
       },
       onUploadComplete: (TestResult data) {
