@@ -4,7 +4,7 @@ version: 0.0.1-dev.16
 homepage: https://github.com/repolyo/fw_dltime.git
 
 environment:
-  sdk: '>=3.1.0-89.0.dev <4.0.0'
+  sdk: '>=3.0.0 <4.0.0'
   flutter: ">=3.3.0"
 
 dependencies:
