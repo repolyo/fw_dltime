@@ -19,3 +19,7 @@
 
 * Converted to package.
 * Insert not found revision to DB
+
+## 0.0.1-dev.18
+
+* Switch to using speed_test_dart package 
