@@ -75,7 +75,7 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   calculateDownloadTime(fwRevision) async {
     _fwDltimePlugin?.dispose();
     _fwRevision = fwRevision;
-    _fwDltimePlugin = FwDltime(debug: false, fwRevision: _fwRevision);
+    _fwDltimePlugin = FwDltime(debug: true, fwRevision: _fwRevision);
 
     _fwDltimePlugin?.calculateDownloadTime((percentage, dlSpeed, time, error) {
       if (!mounted || 0 == percentage) return;
